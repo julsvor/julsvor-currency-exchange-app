@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tauri App</title>
+    <script type="module" src="/main.js" defer></script>
+  </head>
+
+  <body>
+    <main class="container">
+
+    <div id="form-div">
+
+      <h1>Currency Converter</h1>
+      <form class="row" id="currency-form">
+
+        <select class="currency-dropdown" name="currencies" id="currency-from">
+        </select>
+        <input step="0.01" class="currency-input" type="number" id="currency-from-amount" placeholder="Enter a value..." />
+
+        <h2> to </h2>
+
+        <select class="currency-dropdown" name="currencies" id="currency-to">
+        </select>
+        <input step="0.01" class="currency-input" readonly type="number" id="currency-to-amount" placeholder="Conversion here..." />        
+
+        
+        <div>
+          <button type="submit">Convert</button>
+          <button id="swap-currencies" type="button">Swap</button>
+        </div>
+      </form>
+    </div>
+    </main>
+  </body>
+</html>
