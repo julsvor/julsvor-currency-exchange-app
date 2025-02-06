@@ -5,8 +5,6 @@ async function getCurrencies() {
 
   response = JSON.parse(response)
 
-  console.log(response['currencies'])
-
   return response['currencies']
 }
 
@@ -63,8 +61,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
     const currency_amount = currency_from_amountE.value
     const exchange_rate = await getExchangeRate(currency_fromE.value, currency_toE.value)
-    currency_to_amountE.value = Number((exchange_rate['result'][currency_toE.value] * currency_amount).toFixed(2))
-    console.log(3.213.toFixed(2))
+    currency_to_amountE.value = Number((exchange_rate['result'][currency_toE.value] * currency_amount).toFixed(5))
   });
 
   currency_swapE.addEventListener("click", async function() {

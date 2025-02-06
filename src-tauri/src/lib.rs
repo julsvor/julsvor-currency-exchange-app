@@ -2,13 +2,17 @@ use tauri_plugin_http::reqwest;
 use serde_json::Value;
 use dotenv::dotenv;
 
+
+
+// API Auth token
 async fn get_auth() -> String {
-   dotenv().ok();
-   let fastforex_api_token = std::env::var("API_KEY").expect("No API key set");
-   return fastforex_api_token;
+   dotenv().ok().expect("[ERROR] .env not found");
+   std::env::var("API_KEY").ok().expect("[ERROR] API_KEY environment variable not found")
 }
 
 
+
+// Get a list of currencies supported by the API
 #[tauri::command]
 async fn get_currencies() -> Result<String, String> {
 
@@ -28,6 +32,8 @@ async fn get_currencies() -> Result<String, String> {
     Ok(body.to_string())
 }
 
+
+// Get the exchange rate of two currencies
 #[tauri::command]
 async fn get_exchange_rate(currency_from: &str, currency_to: &str) -> Result<String, String> {
 
@@ -35,7 +41,7 @@ async fn get_exchange_rate(currency_from: &str, currency_to: &str) -> Result<Str
 
     let auth: String = get_auth().await;
 
-    let response = client.get(format!("https://api.fastforex.io/convert?from={}&to={}&amount=1&precision=2&api_key={}", currency_from, currency_to, auth))
+    let response = client.get(format!("https://api.fastforex.io/convert?from={}&to={}&amount=1&precision=5&api_key={}", currency_from, currency_to, auth))
         .header("Content-type", "application/x-www-form-urlencoded")
         .header("Authorization", "Basic ".to_owned() + &auth)
         .send()
@@ -47,7 +53,7 @@ async fn get_exchange_rate(currency_from: &str, currency_to: &str) -> Result<Str
     Ok(body.to_string())
 }
 
-
+// Entry point
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
