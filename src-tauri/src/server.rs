@@ -239,7 +239,7 @@ let query2 = "
 ";
 
 
-let result = connection.iterate(query2,  |res|{
+let result = connection.iterate(query2,  |res.|{
 
     println!("First row: {}", res);
     return false;
