@@ -227,46 +227,19 @@ fn get_currencies() -> Vec<Currency>{
 
 fn get_conversion(currency_from_iso:&str, currency_to_iso:&str) -> HashMap<String, Currency>{
 
-    println!("Getting conversions");
-
     let conn = CONNECTION.lock().unwrap();
 
+
     let query = "
-    SELECT * FROM currencies WHERE iso=:cfi OR iso=:cti
-    ORDER BY 
-        CASE
-            WHEN iso = :cfi THEN 1
-            WHEN iso = :cti THEN 2
-            ELSE 3
-        END;
+    SELECT * FROM currencies WHERE iso=:cfi
+    UNION ALL
+    SELECT * FROM currencies WHERE iso=:cti;
     ";
 
 
     let mut statement = conn.prepare(query).unwrap();
     statement.bind((":cfi", currency_from_iso)).unwrap();
     statement.bind((":cti", currency_to_iso)).unwrap();
-
-    if currency_from_iso == currency_to_iso {
-
-        let mut currencies: HashMap<String, Currency> = HashMap::new();
-
-        if let Ok(State::Row) = statement.next() {
-            let iso = statement.read::<String, _>("iso").unwrap();
-            let name = statement.read::<String, _>("name").unwrap();
-            let value = statement.read::<f64, _>("value").unwrap();
-    
-            let currency = Currency {
-                iso,
-                name,
-                value,
-            };
-    
-    
-            currencies.insert("currency_from".to_owned(), currency.clone());
-            currencies.insert("currency_to".to_owned(), currency.clone());
-        }
-        return currencies;
-    }
 
     
     let mut currencies: HashMap<String, Currency> = HashMap::new();
@@ -329,7 +302,6 @@ fn create_database() -> () {
 pub async fn server_start() {
 
     create_database();
-    get_currencies();
 
     let app:Router<()> = Router::new()
     .route("/currencies", get(currency_list_route))
