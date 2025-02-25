@@ -770,6 +770,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "dotenv",
+ "lazy_static",
  "phf 0.11.3",
  "serde",
  "serde_json",

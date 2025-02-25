@@ -1,20 +1,39 @@
 const { invoke } = window.__TAURI__.core;
 
-async function getCurrencies() {
-  let response = await invoke("get_currencies")
 
-  response = JSON.parse(response)
 
-  return response['currencies']
+  // Set up elements
+const currency_form = document.querySelector("#currency-form")
+const currency_swap = document.querySelector("#swap-currencies")
+
+const currencies_element = document.querySelectorAll('.currency-dropdown')
+
+const currency_from_name = document.querySelector("#currency-from")
+const currency_from_amount = document.querySelector("#currency-from-amount")
+
+  
+const currency_to_name = document.querySelector("#currency-to")
+const currency_to_amount = document.querySelector("#currency-to-amount")
+
+
+function displayError(msg) {
+  window.alert(msg)
 }
 
+async function getCurrencies() {
+  let response = await invoke("get_currencies")
+  let data = JSON.parse(response)
+  let result = {}
+  data.forEach(currency => {
+    result[currency['iso']] = currency['name']
+  });
+  return result
+}
 
 
 function formatCurrencyName(name, ISO) {
   return `${name} (${ISO})`
 }
-
-
 
 function createCurrencyOption(name, value) {
   const option = document.createElement('option')
@@ -26,29 +45,8 @@ function createCurrencyOption(name, value) {
 }
 
 
-async function getExchangeRate(from, to) {
-const exchange_rate = await invoke("get_exchange_rate", {currencyFrom:from, currencyTo:to})
-return JSON.parse(exchange_rate)
-}
+function populateCurrencyLists(currencies) {
 
-
-window.addEventListener("DOMContentLoaded", async () => {
-
-  // Set up elements
-  const currency_formE = document.querySelector("#currency-form")
-  const currency_swapE = document.querySelector("#swap-currencies")
-
-  const currencies_element = document.querySelectorAll('.currency-dropdown')
-  const currencies = await getCurrencies()
-
-  const currency_fromE = document.querySelector("#currency-from")
-  const currency_from_amountE = document.querySelector("#currency-from-amount")
-
-  
-  const currency_toE = document.querySelector("#currency-to")
-  const currency_to_amountE = document.querySelector("#currency-to-amount")
-
-  // Populate currencies list
   Object.keys(currencies).forEach(iso=>{
     currencies_element.forEach(dropdown =>{
       const option = createCurrencyOption(formatCurrencyName(currencies[iso], iso), iso)
@@ -56,30 +54,58 @@ window.addEventListener("DOMContentLoaded", async () => {
     })
   })
 
+}
 
-  currency_formE.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const currency_amount = currency_from_amountE.value
-    const exchange_rate = await getExchangeRate(currency_fromE.value, currency_toE.value)
-    currency_to_amountE.value = Number((exchange_rate['result'][currency_toE.value] * currency_amount).toFixed(5))
-  });
 
-  currency_swapE.addEventListener("click", async function() {
-    const tmp1 = currency_from_amountE.value
-    const tmp2 = currency_to_amountE.value
+function handleFormSubmission(e) {
     
-    const tmp3 = currency_fromE.value
-    const tmp4 = currency_toE.value
+  e.preventDefault();
 
-    currency_from_amountE.value = tmp2
-    currency_to_amountE.value = tmp1
+  
+  invoke("get_exchange_rate", {currencyFromName:currency_from_name.value, currencyToName:currency_to_name.value})
+  .then(data => {
+    const exchange_rate = JSON.parse(data)
+    const currency_from_rate = exchange_rate['currency_from']['value']
+    const currency_to_rate = exchange_rate['currency_to']['value']
 
-    currency_fromE.value = tmp4
-    currency_toE.value = tmp3
+    currency_to_amount.value = Number(((currency_from_rate * currency_from_amount.value) / currency_to_rate).toFixed(5))
 
   })
+  .catch(error => {
+    displayError(error)
+  })
 
-  console.log(await invoke("test_http", {}))
+}
 
 
-});
+function handleCurrencySwapClick(e) {
+
+  const tmp1 = currency_from_amount.value
+  const tmp2 = currency_to_amount.value
+
+  currency_from_amount.value = tmp2
+  currency_to_amount.value = tmp1
+
+  const tmp3 = currency_from_name.value
+  const tmp4 = currency_to_name.value
+  
+  currency_from_name.value = tmp4
+  currency_to_name.value = tmp3
+
+}
+
+
+//////////
+// MAIN //
+//////////
+
+const currencies = await getCurrencies();
+
+populateCurrencyLists(currencies);
+
+currency_form.addEventListener("submit", handleFormSubmission);
+
+currency_swap.addEventListener("click", handleCurrencySwapClick); 
+
+
+

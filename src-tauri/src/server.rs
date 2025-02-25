@@ -1,11 +1,13 @@
-// use tokio;
-// use axum::{
-//     http::StatusCode, response::IntoResponse, routing::{get, post}, Json, Router
-// };
-// use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::Mutex};
+use lazy_static::lazy_static;
+use sqlite::State;
+use tokio;
+use axum::{
+    http::StatusCode, response::IntoResponse, routing::{get, post}, Json, Router
+};
+use serde::{Deserialize, Serialize};
 // use std::{collections::HashMap, string};
 // use phf::phf_map;
-// // SERVER //
 
 // static mut CURRENCIES: phf::Map<&'static str, &'static str> = phf_map!{
 //     "United Arab Emirates Dirham" => "AED",
@@ -160,91 +162,180 @@
 //     "Zambian Kwacha" => "ZMW",
 //     };
     
-    
-    
-    
-//     async fn root() -> &'static str {
-//         "Hello, world"
-//     }
-    
-//     async fn currency_list_route() -> impl IntoResponse {
-        
-    
-    
-//         (StatusCode::OK, Json(CURRENCIES))
-//     }
-    
-//     async fn convert_route() -> impl IntoResponse {
-    
-//         let conversion = Conversion {
-//             exchange_rate: 1.2345,
-//             from: "AED".to_owned(),
-//             to: "AED".to_owned(),
-//         };
-    
-//         (StatusCode::OK, Json(conversion))
-//     }
-    
-//     #[derive(Serialize)]
-//     struct Currency {
-//         name: String,
-//         iso_code: String,
-//     }
-    
-//     #[derive(Serialize)]
-//     struct Conversion {
-//         exchange_rate: f32,
-//         from: String,
-//         to: String,
-//     }
-    
+
+lazy_static! {
+    static ref CONNECTION: Mutex<sqlite::Connection> = Mutex::new(sqlite::open(":memory:").unwrap());
+}
 
 
-// async fn main() {
-// #[tokio::main]
-// tokio::spawn(async {
-//     let app = Router::new()
-//     .route("/", get(root))
-//     .route("/currencies", get(currency_list_route))
-//     .route("/convert", post(convert_route));
+#[derive(Serialize, Deserialize, Clone)]
+struct Currency {
+    iso: String,
+    name: String,
+    value: f64,
+}
 
-//     let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
-//         .await
-//         .expect("Failed to bind server");
-
-//     tracing::debug!("Listening on {}", listener.local_addr().unwrap());
-
-//     if let Err(e) = axum::serve(listener, app).await {
-//         tracing::error!("Server error: {}", e);
-//     }
-// });
-// }
+#[derive(Deserialize)]
+struct ConversionRequest {
+    currency_from:String,
+    currency_to:String,
+}
 
 
-// #[tokio::main]
+async fn currency_list_route() -> impl IntoResponse {
+
+
+    
+    (StatusCode::OK, Json(get_currencies()))
+}
+
+
+async fn convert_route(Json(payload): Json<ConversionRequest>) -> impl IntoResponse {
+
+    let currency_from_iso = &payload.currency_from;
+    let currency_to_iso = &payload.currency_to;
+
+    (StatusCode::OK, Json(get_conversion(currency_from_iso, currency_to_iso)))
+}
+
+
+fn get_currencies() -> Vec<Currency>{
+
+    let conn = CONNECTION.lock().unwrap();
+
+    let query2 = "SELECT * FROM currencies;";
+
+    let mut statement = conn.prepare(query2).unwrap();
+    
+    let mut currencies: Vec<Currency> = Vec::new();
+
+    while let Ok(State::Row) = statement.next() {
+        let iso = statement.read::<String, _>("iso").unwrap();
+        let name = statement.read::<String, _>("name").unwrap();
+        let value = statement.read::<f64, _>("value").unwrap();
+
+        let currency = Currency {
+            iso,
+            name,
+            value,
+        };
+        currencies.push(currency);
+    };
+
+    currencies
+}
+
+fn get_conversion(currency_from_iso:&str, currency_to_iso:&str) -> HashMap<String, Currency>{
+
+    println!("Getting conversions");
+
+    let conn = CONNECTION.lock().unwrap();
+
+    let query = "
+    SELECT * FROM currencies WHERE iso=:cfi OR iso=:cti
+    ORDER BY 
+        CASE
+            WHEN iso = :cfi THEN 1
+            WHEN iso = :cti THEN 2
+            ELSE 3
+        END;
+    ";
+
+
+    let mut statement = conn.prepare(query).unwrap();
+    statement.bind((":cfi", currency_from_iso)).unwrap();
+    statement.bind((":cti", currency_to_iso)).unwrap();
+
+    if currency_from_iso == currency_to_iso {
+
+        let mut currencies: HashMap<String, Currency> = HashMap::new();
+
+        if let Ok(State::Row) = statement.next() {
+            let iso = statement.read::<String, _>("iso").unwrap();
+            let name = statement.read::<String, _>("name").unwrap();
+            let value = statement.read::<f64, _>("value").unwrap();
+    
+            let currency = Currency {
+                iso,
+                name,
+                value,
+            };
+    
+    
+            currencies.insert("currency_from".to_owned(), currency.clone());
+            currencies.insert("currency_to".to_owned(), currency.clone());
+        }
+        return currencies;
+    }
+
+    
+    let mut currencies: HashMap<String, Currency> = HashMap::new();
+
+
+    if let Ok(State::Row) = statement.next() {
+        let iso = statement.read::<String, _>("iso").unwrap();
+        let name = statement.read::<String, _>("name").unwrap();
+        let value = statement.read::<f64, _>("value").unwrap();
+
+        let currency = Currency {
+            iso,
+            name,
+            value,
+        };
+
+
+        currencies.insert("currency_from".to_owned(), currency);
+    }
+
+    if let Ok(State::Row) = statement.next() {
+        let iso = statement.read::<String, _>("iso").unwrap();
+        let name = statement.read::<String, _>("name").unwrap();
+        let value = statement.read::<f64, _>("value").unwrap();
+
+        let currency = Currency {
+            iso,
+            name,
+            value,
+        };
+
+        currencies.insert("currency_to".to_owned(), currency);
+    }
+    
+
+    currencies
+}
+
+fn create_database() -> () {
+
+    let conn = CONNECTION.lock().unwrap();
+
+    let query = "
+        CREATE TABLE IF NOT EXISTS currencies (iso CHAR(3), name TINYTEXT, value FLOAT);
+        INSERT INTO currencies VALUES ('USD', 'United States Dollar', 1);
+        INSERT INTO currencies VALUES ('HUF', 'Hungarian Forint', 0.00261022);
+        INSERT INTO currencies VALUES ('SEK', 'Swedish Krona', 0.0938402); 
+    ";
+    
+    let result = conn.execute(query);
+
+    match result {
+        Err(err) => println!("An error ): {}", err.to_string()),
+        Ok(_) => println!("No error (:"),
+    }
+
+}
+
+
 pub async fn server_start() {
 
-let connection = sqlite::open(":memory:").unwrap();
+    create_database();
+    get_currencies();
 
-let query = "
-    CREATE TABLE users (name TEXT, age INTEGER);
-    INSERT INTO users VALUES ('Alice', 42);
-    INSERT INTO users VALUES ('Bob', 69);
-";
-connection.execute(query).expect("Error sqlite");
-
-
-let query2 = "
-    SELECT Name FROM users;
-";
-
-
-let result = connection.iterate(query2,  |res.|{
-
-    println!("First row: {}", res);
-    return false;
-});
-
-
+    let app:Router<()> = Router::new()
+    .route("/currencies", get(currency_list_route))
+    .route("/convert", post(convert_route));
+    
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 
 }
