@@ -79,4 +79,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   })
 
+  console.log(await invoke("test_http", {}))
+
+
 });
