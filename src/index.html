@@ -1,38 +1,51 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
-    <script type="module" src="/main.js" defer></script>
-  </head>
 
-  <body>
-    <main class="container">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tauri App</title>
+  <script type="module" src="/main.js" defer></script>
+</head>
+
+<body>
+  <main class="container">
+
+    <!-- <div id="outer-form-div"> -->
 
     <div id="form-div">
 
-      <h1>Currency Converter</h1>
+      <h1 class="form-header-1">Currency Converter</h1>
       <form class="row" id="currency-form">
 
-        <select class="currency-dropdown" name="currencies" id="currency-from">
-        </select>
-        <input step="0.00001" class="currency-input" type="number" id="currency-from-amount" placeholder="Enter a value..." />
+        <div class="inner-form-div">
 
-        <h2> to </h2>
+          <div>
+          <select class="currency-dropdown" name="currencies" id="currency-from"></select>
+          <input step="0.00001" class="currency-input" type="number" id="currency-from-amount" placeholder="Enter a value..." />
+          </div>
 
-        <select class="currency-dropdown" name="currencies" id="currency-to">
-        </select>
-        <input step="0.0001" class="currency-input" readonly type="number" id="currency-to-amount" placeholder="Conversion here..." />        
+          <h2 class="form-header-2">to</h2>
 
-        
-        <div>
-          <button type="submit">Convert</button>
-          <button id="swap-currencies" type="button">Swap</button>
+          <div>
+          <select class="currency-dropdown" name="currencies" id="currency-to"></select>
+          <input step="0.0001" class="currency-input" readonly type="number" id="currency-to-amount" placeholder="Conversion here..." />
+          </div>
+
+          <div>
+          <button class="currency-button" type="submit">Convert</button>
+          <button class="currency-button" id="swap-currencies" type="button">Swap</button>
+          </div>
+
         </div>
+
+        <div>
+        </div>
+
       </form>
     </div>
-    </main>
-  </body>
+  </main>
+</body>
+
 </html>

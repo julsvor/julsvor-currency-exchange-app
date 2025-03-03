@@ -1,168 +1,15 @@
 use std::{collections::HashMap, sync::Mutex};
 use lazy_static::lazy_static;
+use serde_json::json;
 use sqlite::State;
 use tokio;
 use axum::{
     http::StatusCode, response::IntoResponse, routing::{get, post}, Json, Router
 };
 use serde::{Deserialize, Serialize};
-// use std::{collections::HashMap, string};
-// use phf::phf_map;
 
-// static mut CURRENCIES: phf::Map<&'static str, &'static str> = phf_map!{
-//     "United Arab Emirates Dirham" => "AED",
-//     "Afghan Afghani" => "AFN",
-//     "Albanian Lek" => "ALL",
-//     "Armenian Dram" => "AMD",
-//     "Dutch Guilders" => "ANG",
-//     "Angolan Kwanza" => "AOA",
-//     "Argentine Peso" => "ARS",
-//     "Australian Dollar" => "AUD",
-//     "Aruban Florin" => "AWG",
-//     "Azerbaijani Manat" => "AZN",
-//     "Bosnia-Herzegovina Convertible Mark" => "BAM",
-//     "Barbadian Dollar" => "BBD",
-//     "Bangladeshi Taka" => "BDT",
-//     "Bulgarian Lev" => "BGN",
-//     "Bahraini Dinar" => "BHD",
-//     "Burundian Franc" => "BIF",
-//     "Bermudian Dollar" => "BMD",
-//     "Bruneian Dollar" => "BND",
-//     "Bolivian Boliviano" => "BOB",
-//     "Brazilian Real" => "BRL",
-//     "Bahamian Dollar" => "BSD",
-//     "Bhutanese Ngultrum" => "BTN",
-//     "Botswanan Pula" => "BWP",
-//     "Belizean Dollar" => "BZD",
-//     "Canadian Dollar" => "CAD",
-//     "Congolese Franc" => "CDF",
-//     "Swiss Franc" => "CHF",
-//     "Chilean Unit of Account UF" => "CLF",
-//     "Chilean Peso" => "CLP",
-//     "Chinese Yuan Offshore" => "CNH",
-//     "Chinese Yuan" => "CNY",
-//     "Colombian Peso" => "COP",
-//     "Cuban Peso" => "CUP",
-//     "Cape Verdean Escudo" => "CVE",
-//     "Czech Republic Koruna" => "CZK",
-//     "Djiboutian Franc" => "DJF",
-//     "Danish Krone" => "DKK",
-//     "Dominican Peso" => "DOP",
-//     "Algerian Dinar" => "DZD",
-//     "Egyptian Pound" => "EGP",
-//     "Eritrean Nakfa" => "ERN",
-//     "Ethiopian Birr" => "ETB",
-//     "Euro" => "EUR",
-//     "Fijian Dollar" => "FJD",
-//     "Falkland Islands Pound" => "FKP",
-//     "British Pound Sterling" => "GBP",
-//     "Georgian Lari" => "GEL",
-//     "Ghanaian Cedi" => "GHS",
-//     "Gibraltar Pound" => "GIP",
-//     "Gambian Dalasi" => "GMD",
-//     "Guinean Franc" => "GNF",
-//     "Guatemalan Quetzal" => "GTQ",
-//     "Guyanaese Dollar" => "GYD",
-//     "Hong Kong Dollar" => "HKD",
-//     "Honduran Lempira" => "HNL",
-//     "Croatian Kuna" => "HRK",
-//     "Haitian Gourde" => "HTG",
-//     "Hungarian Forint" => "HUF",
-//     "Indonesian Rupiah" => "IDR",
-//     "Israeli New Sheqel" => "ILS",
-//     "Indian Rupee" => "INR",
-//     "Iraqi Dinar" => "IQD",
-//     "Iranian Rial" => "IRR",
-//     "Icelandic Krona" => "ISK",
-//     "Jamaican Dollar" => "JMD",
-//     "Jordanian Dinar" => "JOD",
-//     "Japanese Yen" => "JPY",
-//     "Kenyan Shilling" => "KES",
-//     "Kyrgystani Som" => "KGS",
-//     "Cambodian Riel" => "KHR",
-//     "Comorian Franc" => "KMF",
-//     "North Korean Won" => "KPW",
-//     "South Korean Won" => "KRW",
-//     "Kuwaiti Dinar" => "KWD",
-//     "Caymanian Dollar" => "KYD",
-//     "Kazakhstani Tenge" => "KZT",
-//     "Laotian Kip" => "LAK",
-//     "Lebanese Pound" => "LBP",
-//     "Sri Lankan Rupee" => "LKR",
-//     "Liberian Dollar" => "LRD",
-//     "Basotho Maloti" => "LSL",
-//     "Libyan Dinar" => "LYD",
-//     "Moroccan Dirham" => "MAD",
-//     "Moldovan Leu" => "MDL",
-//     "Malagasy Ariary" => "MGA",
-//     "Macedonian Denar" => "MKD",
-//     "Myanma Kyat" => "MMK",
-//     "Mongolian Tugrik" => "MNT",
-//     "Macanese Pataca" => "MOP",
-//     "Mauritanian Ouguiya" => "MRU",
-//     "Mauritian Rupee" => "MUR",
-//     "Maldivian Rufiyaa" => "MVR",
-//     "Malawian Kwacha" => "MWK",
-//     "Mexican Peso" => "MXN",
-//     "Malaysian Ringgit" => "MYR",
-//     "Mozambican Metical" => "MZN",
-//     "Namibian Dollar" => "NAD",
-//     "Nigerian Naira" => "NGN",
-//     "Norwegian Krone" => "NOK",
-//     "Nepalese Rupee" => "NPR",
-//     "New Zealand Dollar" => "NZD",
-//     "Omani Rial" => "OMR",
-//     "Panamanian Balboa" => "PAB",
-//     "Peruvian Nuevo Sol" => "PEN",
-//     "Papua New Guinean Kina" => "PGK",
-//     "Philippine Peso" => "PHP",
-//     "Pakistani Rupee" => "PKR",
-//     "Polish Zloty" => "PLN",
-//     "Paraguayan Guarani" => "PYG",
-//     "Qatari Rial" => "QAR",
-//     "Romanian Leu" => "RON",
-//     "Serbian Dinar" => "RSD",
-//     "Russian Ruble" => "RUB",
-//     "Rwandan Franc" => "RWF",
-//     "Saudi Arabian Riyal" => "SAR",
-//     "Seychellois Rupee" => "SCR",
-//     "Sudanese Pound" => "SDG",
-//     "Swedish Krona" => "SEK",
-//     "Singapore Dollar" => "SGD",
-//     "Saint Helena Pound" => "SHP",
-//     "Sierra Leonean Leone" => "SLL",
-//     "Somali Shilling" => "SOS",
-//     "Surinamese Dollar" => "SRD",
-//     "Syrian Pound" => "SYP",
-//     "Swazi Emalangeni" => "SZL",
-//     "Thai Baht" => "THB",
-//     "Tajikistani Somoni" => "TJS",
-//     "Turkmenistani Manat" => "TMT",
-//     "Tunisian Dinar" => "TND",
-//     "Tongan Pa'anga" => "TOP",
-//     "Turkish Lira" => "TRY",
-//     "Trinidad and Tobago Dollar" => "TTD",
-//     "Taiwan New Dollar" => "TWD",
-//     "Tanzanian Shilling" => "TZS",
-//     "Ukrainian Hryvnia" => "UAH",
-//     "Ugandan Shilling" => "UGX",
-//     "United States Dollar" => "USD",
-//     "Uruguayan Peso" => "UYU",
-//     "Uzbekistan Som" => "UZS",
-//     "Vietnamese Dong" => "VND",
-//     "Ni-Vanuatu Vatu" => "VUV",
-//     "Samoan Tala" => "WST",
-//     "CFA Franc BEAC" => "XAF",
-//     "East Caribbean Dollar" => "XCD",
-//     "Special Drawing Rights" => "XDR",
-//     "CFA Franc BCEAO" => "XOF",
-//     "CFP Franc" => "XPF",
-//     "Yemeni Rial" => "YER",
-//     "South African Rand" => "ZAR",
-//     "Zambian Kwacha" => "ZMW",
-//     };
-    
 
+// Initialize static database connection with thread safety
 lazy_static! {
     static ref CONNECTION: Mutex<sqlite::Connection> = Mutex::new(sqlite::open(":memory:").unwrap());
 }
@@ -182,53 +29,76 @@ struct ConversionRequest {
 }
 
 
+// Respond to /currencies with a list of available currencies
 async fn currency_list_route() -> impl IntoResponse {
 
+    let result = get_currencies();
 
+    let req_response: serde_json::Value;
     
-    (StatusCode::OK, Json(get_currencies()))
+    match result {
+        Ok(res) => {
+            req_response = json!({"code": "200","payload": res});
+            (StatusCode::OK, Json(req_response))
+        }
+
+        Err(e) => {
+            req_response = json!({"code":"500", "error": e.to_string()});
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(req_response))
+        }
+    }
 }
 
 
+// Respond to /convert with the two given currencies value, name and iso
 async fn convert_route(Json(payload): Json<ConversionRequest>) -> impl IntoResponse {
 
-    let currency_from_iso = &payload.currency_from;
-    let currency_to_iso = &payload.currency_to;
+    let result = get_conversion(&payload.currency_to, &payload.currency_from);
 
-    (StatusCode::OK, Json(get_conversion(currency_from_iso, currency_to_iso)))
+    let req_response: serde_json::Value;
+
+    match result {
+        Ok(res) => {
+            req_response = json!({"code":"200", "payload":res});
+            (StatusCode::OK, Json(req_response))
+        }
+
+        Err(e) => {
+            req_response = json!({"code":"500", "error":e.to_string()});
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(req_response))
+        }
+    }
 }
 
 
-fn get_currencies() -> Vec<Currency>{
+// Get the list of currencies from in-memory sqlite database
+fn get_currencies() -> Result<Vec<Currency>, String> {
 
-    let conn = CONNECTION.lock().unwrap();
+    let conn = CONNECTION.lock().map_err(|err| format!("Failed to lock connection: {}", err))?;
 
-    let query2 = "SELECT * FROM currencies;";
+    let query = "SELECT * FROM currencies;";
 
-    let mut statement = conn.prepare(query2).unwrap();
-    
+    let mut statement = conn.prepare(query).map_err(|err| format!("SQL prepare failed: {}", err))?;
+
     let mut currencies: Vec<Currency> = Vec::new();
 
     while let Ok(State::Row) = statement.next() {
-        let iso = statement.read::<String, _>("iso").unwrap();
-        let name = statement.read::<String, _>("name").unwrap();
-        let value = statement.read::<f64, _>("value").unwrap();
+        let iso = statement.read::<String, _>("iso").map_err(|err| format!("Failed to read String 'iso': {}", err))?;
+        let name = statement.read::<String, _>("name").map_err(|err| format!("Failed to read String 'name': {}", err))?;
+        let value = statement.read::<f64, _>("value").map_err(|err| format!("Failed to read f64'value': {}", err))?;
 
-        let currency = Currency {
-            iso,
-            name,
-            value,
-        };
+        let currency = Currency {iso, name, value};
         currencies.push(currency);
     };
 
-    currencies
+    Ok(currencies)
 }
 
-fn get_conversion(currency_from_iso:&str, currency_to_iso:&str) -> HashMap<String, Currency>{
 
-    let conn = CONNECTION.lock().unwrap();
+// Get the two given currencies
+fn get_conversion(currency_from_iso:&str, currency_to_iso:&str) -> Result<HashMap<String, Currency>, String>{
 
+    let conn = CONNECTION.lock().map_err(|err| format!("Failed to lock connection: {}", err))?;
 
     let query = "
     SELECT * FROM currencies WHERE iso=:cfi
@@ -236,65 +106,59 @@ fn get_conversion(currency_from_iso:&str, currency_to_iso:&str) -> HashMap<Strin
     SELECT * FROM currencies WHERE iso=:cti;
     ";
 
-
-    let mut statement = conn.prepare(query).unwrap();
-    statement.bind((":cfi", currency_from_iso)).unwrap();
-    statement.bind((":cti", currency_to_iso)).unwrap();
-
+    let mut statement = conn.prepare(query).map_err(|err| format!("SQL prepare failed: {}", err))?;
+    statement.bind((":cfi", currency_from_iso)).map_err(|err| format!("Failed to bind :cfi : {}", err))?;
+    statement.bind((":cti", currency_to_iso)).map_err(|err| format!("Failed to bind :cti : {}", err))?;
     
     let mut currencies: HashMap<String, Currency> = HashMap::new();
 
-
-    if let Ok(State::Row) = statement.next() {
-        let iso = statement.read::<String, _>("iso").unwrap();
-        let name = statement.read::<String, _>("name").unwrap();
-        let value = statement.read::<f64, _>("value").unwrap();
-
-        let currency = Currency {
-            iso,
-            name,
-            value,
-        };
-
-
-        currencies.insert("currency_from".to_owned(), currency);
-    }
-
-    if let Ok(State::Row) = statement.next() {
-        let iso = statement.read::<String, _>("iso").unwrap();
-        let name = statement.read::<String, _>("name").unwrap();
-        let value = statement.read::<f64, _>("value").unwrap();
-
-        let currency = Currency {
-            iso,
-            name,
-            value,
-        };
-
-        currencies.insert("currency_to".to_owned(), currency);
-    }
+    for order in ["currency_to", "currency_from"] {
+        if let Ok(State::Row) = statement.next() {
+        let iso = statement.read::<String, _>("iso").map_err(|err| format!("Failed to read String 'iso': {}", err))?;
+        let name = statement.read::<String, _>("name").map_err(|err| format!("Failed to read String 'name': {}", err))?;
+        let value = statement.read::<f64, _>("value").map_err(|err| format!("Failed to read f64'value': {}", err))?;
     
+            let currency = Currency {iso, name, value};
+    
+            currencies.insert(order.to_owned(), currency);
+        }
 
-    currencies
+    }
+
+    Ok(currencies)
 }
 
+
+// Create the in-memory sqlite database
 fn create_database() -> () {
 
     let conn = CONNECTION.lock().unwrap();
 
     let query = "
         CREATE TABLE IF NOT EXISTS currencies (iso CHAR(3), name TINYTEXT, value FLOAT);
+
+        -- Rates during 2025-03-03
         INSERT INTO currencies VALUES ('USD', 'United States Dollar', 1);
+        INSERT INTO currencies VALUES ('UAH', 'Ukrainian Hryvnia', 0.024048094 );
+        INSERT INTO currencies VALUES ('TRY', 'Turkish Lira', 0.027448936);
+        INSERT INTO currencies VALUES ('BYN', 'Belarussian Ruble', 0.3058093 );
+        INSERT INTO currencies VALUES ('BGN', 'Bulgarian Lev', 0.53629232 );
+        INSERT INTO currencies VALUES ('CHF', 'Swiss Franc', 1.11532 ); 
         INSERT INTO currencies VALUES ('HUF', 'Hungarian Forint', 0.00261022);
         INSERT INTO currencies VALUES ('SEK', 'Swedish Krona', 0.0938402); 
+        INSERT INTO currencies VALUES ('EUR', 'Euro', 1.0491207); 
+        INSERT INTO currencies VALUES ('RUB', 'Russian Ruble', 0.011150311); 
+        INSERT INTO currencies VALUES ('NOK', 'Norwegian Krone', 0.089388265);
+        INSERT INTO currencies VALUES ('GBP', 'British Pound', 1.271049); 
+        INSERT INTO currencies VALUES ('DKK', 'Danish Krone', 0.14064366); 
+        INSERT INTO currencies VALUES ('CZK', 'Czech Koruna', 0.041923727);
+        INSERT INTO currencies VALUES ('MKD', 'Macedonian Denar', 0.017005435);
+        INSERT INTO currencies VALUES ('PLN', 'Polish Zloty', 0.25220751); 
+        INSERT INTO currencies VALUES ('RON', 'Romanian Leu', 0.21079086); 
+        INSERT INTO currencies VALUES ('RSD', 'Serbian Dinar', 0.0089556509); 
     ";
     
-    let result = conn.execute(query);
-
-    match result {
-        Err(err) => println!("An error ): {}", err.to_string()),
-        Ok(_) => println!("No error (:"),
-    }
+    let _result = conn.execute(query);
 
 }
 

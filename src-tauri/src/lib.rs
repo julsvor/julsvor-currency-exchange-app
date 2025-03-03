@@ -6,6 +6,7 @@ use serde_json::Value;
 use tokio;
 pub mod server;
 
+// HTTP Client
 lazy_static! {
     static ref CLIENT: reqwest::Client = reqwest::Client::new();
 }
@@ -20,7 +21,16 @@ async fn get_currencies() -> Result<String, String> {
         .await
         .map_err(|e| format!("[ERROR] {}", e.to_string()))?;
 
+    let retval = response.status();
+
     let body: Value = response.json().await.map_err(|op| format!("[ERROR] {}", op.to_string()))?;
+
+    if retval != 200 {
+        if retval == 500 {
+            return Err(body["error"].as_str().unwrap().to_string());
+        }
+        return Err(format!("Server returned non 200 status code"));
+    }
 
     Ok(body.to_string())
 }
@@ -41,13 +51,20 @@ async fn get_exchange_rate(currency_from_name: &str, currency_to_name: &str) -> 
         .await
         .map_err(|e| format!("[ERROR] {}", e.to_string()))?;
 
+    let retval = response.status();
+
     let body: Value = response.json().await.map_err(|op| format!("[ERROR] {}", op.to_string()))?;
 
-    // println!("True val {}", response.text().await.map_err(|op| op.to_string())?);
+    if retval != 200 {
+        if retval == 500 {
+            return Err(body["error"].as_str().unwrap().to_string());
+        }
+        return Err(format!("Server returned non 200 status code"));
+    }
 
     Ok(body.to_string())
-    // Ok("Yo".to_string())
 }
+
 
 // Entry point
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
