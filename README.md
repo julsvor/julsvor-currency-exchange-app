@@ -6,5 +6,5 @@ Blazingly fast
 
 # Build
 ```bash
-cargo tauri dev
+cargo tauri build
 ```
